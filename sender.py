@@ -1,66 +1,56 @@
-import os
 import socket
-import argparse
-import sys
+import os
 from cryptography.fernet import Fernet
 
-def encrypt_file(key, filepath):
-    """
-    Encrypts the file at the given file path using the provided key.
+# Define the encryption key
+key = b'_vIt8OKkWlDGid-hI9MG9MpkvJc8fWdhrCp4F3qkGv4='
+f = Fernet(key)
 
-    Parameters:
-    key (bytes): the encryption key
-    filepath (str): the file path of the file to encrypt
-    """
-    with open(filepath, 'rb') as f:
-        data = f.read()
+# Define the file to send
+filename = "test.txt"
 
-    fernet = Fernet(key)
-    encrypted_data = fernet.encrypt(data)
+# Get the size of the file in bytes and encode it to bytes
+filesize = os.path.getsize(filename)
+filesize_bytes = str(filesize).encode()
 
-    with open(filepath, 'wb') as f:
-        f.write(encrypted_data)
+# Define the buffer size
+BUFFER_SIZE = 4096
 
-def send_file(filepath, host, port, key):
-    """
-    Sends the file at the given file path to the specified host and port
-    using a socket connection. The file is encrypted before being sent
-    using the provided key.
+# Define the host and port to send the file
+host = "localhost"
+port = 8000
 
-    Parameters:
-    filepath (str): the file path of the file to send
-    host (str): the host to send the file to
-    port (int): the port to use for the socket connection
-    key (bytes): the encryption key to use for encrypting the file
-    """
-    # Encrypt the file before sending
-    encrypt_file(key, filepath)
+# Create the socket object
+s = socket.socket()
 
-    # Create a socket connection and connect to the specified host and port
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.connect((host, port))
+# Connect to the server
+print(f"Connecting to {host}:{port}")
+s.connect((host, port))
 
-    # Send the filename and file contents over the socket
-    filename = os.path.basename(filepath)
-    sock.sendall(filename.encode())
-    with open(filepath, 'rb') as f:
-        sock.sendall(f.read())
+# Send the file size to the server
+print(f"Sending file size: {filesize_bytes}")
+s.send(filesize_bytes)
 
-    # Close the socket connection
-    sock.close()
+# Open the file and read the data in chunks
+with open(filename, "rb") as file:
+    print(f"Sending file: {filename}")
+    while True:
+        # Read the data from the file
+        data = file.read(BUFFER_SIZE)
 
-    print(f"File '{filename}' sent successfully to {host}:{port}")
+        # Check if the data is empty
+        if not data:
+            # If the data is empty, break the loop
+            break
 
+        # Encrypt the data using the key
+        encrypted_data = f.encrypt(data)
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Send a file over a socket connection.')
-    parser.add_argument('file', metavar='file', type=str, help='the file to send')
-    parser.add_argument('host', metavar='host', type=str, help='the host to send the file to')
-    parser.add_argument('port', metavar='port', type=int, help='the port to use for the socket connection')
-    args = parser.parse_args()
+        # Send the encrypted data to the server
+        s.send(encrypted_data)
 
-    # Define the encryption key
-    key = b'_5FB9tA2P7VHv8mWk7VJ1wqop3NYRKb1adz0Z0oX9Dg='
+# Close the socket
+s.close()
 
-    # Send the file to the specified host and port
-    send_file(args.file, args.host, args.port, key)
+# Print the success message
+print("File sent successfully.")
