@@ -2,6 +2,7 @@ import socket
 import os
 from cryptography.fernet import Fernet
 import bcrypt
+from tqdm import tqdm
 
 # Define the encryption key
 key = b'_vIt8OKkWlDGid-hI9MG9MpkvJc8fWdhrCp4F3qkGv4='
@@ -58,9 +59,11 @@ if hashed_entered_username == hashed_username and hashed_entered_password == has
     # Decode the file size to an integer
     filesize = int(filesize_bytes.decode())
 
+    # Initialize the progress bar
+    progress = tqdm(total=filesize, unit="B", unit_scale=True, desc="Receiving file")
+
     # Receive the file data in chunks and write it to a file
     with open("received_file.txt", "wb") as file:
-        print("Receiving file...")
         while filesize > 0:
             # Receive the encrypted data from the client
             encrypted_data = conn.recv(BUFFER_SIZE)
@@ -73,6 +76,12 @@ if hashed_entered_username == hashed_username and hashed_entered_password == has
 
             # Subtract the number of bytes received from the file size
             filesize -= len(data)
+
+            # Update the progress bar
+            progress.update(len(data))
+
+    # Close the progress bar
+    progress.close()
 
     # Close the connection and socket
     conn.close()
