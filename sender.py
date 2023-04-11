@@ -17,8 +17,11 @@ filesize_bytes = str(filesize).encode()
 BUFFER_SIZE = 4096
 
 # Define the host and port to send the file
-host = "localhost"
-port = 8000
+# host = "localhost"
+# port = 8000
+
+host = input("Enter the receiver host to connect: ")
+port = int(input("Enter the port to connect: "))
 
 # Create the socket object
 s = socket.socket()
