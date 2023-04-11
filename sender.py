@@ -1,59 +1,81 @@
 import socket
 import os
 from cryptography.fernet import Fernet
+import bcrypt
 
 # Define the encryption key
 key = b'_vIt8OKkWlDGid-hI9MG9MpkvJc8fWdhrCp4F3qkGv4='
 f = Fernet(key)
 
-# Define the file to send
-filename = "test.txt"
-
-# Get the size of the file in bytes and encode it to bytes
-filesize = os.path.getsize(filename)
-filesize_bytes = str(filesize).encode()
-
 # Define the buffer size
 BUFFER_SIZE = 4096
 
 # Define the host and port to send the file
-# host = "localhost"
-# port = 8000
-
-host = input("Enter the receiver host to connect: ")
-port = int(input("Enter the port to connect: "))
+host = "localhost"
+port = 8000
 
 # Create the socket object
 s = socket.socket()
 
 # Connect to the server
-print(f"Connecting to {host}:{port}")
 s.connect((host, port))
 
-# Send the file size to the server
-print(f"Sending file size: {filesize_bytes}")
-s.send(filesize_bytes)
+# Get the username and password from the user
+username = input("Enter your username: ")
+password = input("Enter your password: ").encode()
 
-# Open the file and read the data in chunks
-with open(filename, "rb") as file:
-    print(f"Sending file: {filename}")
-    while True:
-        # Read the data from the file
-        data = file.read(BUFFER_SIZE)
+# Hash the entered username and password
+hashed_entered_username = bcrypt.hashpw(username.encode(), bcrypt.gensalt())
+hashed_entered_password = bcrypt.hashpw(password, bcrypt.gensalt())
 
-        # Check if the data is empty
-        if not data:
-            # If the data is empty, break the loop
-            break
+# print(f"Hashed username: {hashed_entered_username}")
+# print(f"Hashed password: {hashed_entered_password}")
 
-        # Encrypt the data using the key
-        encrypted_data = f.encrypt(data)
+# Send the hashed username to the server
+s.send(hashed_entered_username)
 
-        # Send the encrypted data to the server
-        s.send(encrypted_data)
+# Send the hashed password to the server
+s.send(hashed_entered_password)
 
-# Close the socket
-s.close()
+# Receive the authentication result from the server
+auth_result = s.recv(BUFFER_SIZE).decode()
 
-# Print the success message
-print("File sent successfully.")
+# Check if the authentication was successful
+if auth_result == "OK":
+    print("Authentication successful.")
+
+    # Get the file to send from the user
+    file_path = input("Enter the path of the file to send: ")
+
+    # Get the size of the file
+    filesize = os.path.getsize(file_path)
+
+    # Send the file size to the server
+    s.send(str(filesize).encode())
+
+    # Send the file data in chunks
+    with open(file_path, "rb") as file:
+        print("Sending file...")
+        while True:
+            # Read a chunk of data from the file
+            data = file.read(BUFFER_SIZE)
+
+            # Check if the end of file has been reached
+            if not data:
+                break
+
+            # Encrypt the data using the key
+            encrypted_data = f.encrypt(data)
+
+            # Send the encrypted data to the server
+            s.send(encrypted_data)
+
+    # Close the connection
+    s.close()
+
+    print("File sent successfully.")
+else:
+    print("Authentication failed.")
+
+    # Close the connection
+    s.close()

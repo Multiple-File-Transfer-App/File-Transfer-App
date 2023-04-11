@@ -1,6 +1,7 @@
 import socket
 import os
 from cryptography.fernet import Fernet
+import bcrypt
 
 # Define the encryption key
 key = b'_vIt8OKkWlDGid-hI9MG9MpkvJc8fWdhrCp4F3qkGv4='
@@ -10,56 +11,79 @@ f = Fernet(key)
 BUFFER_SIZE = 4096
 
 # Define the host and port to receive the file
-# host = "localhost"
-# port = 8000
-
-host = input("Enter the host to connect: ")
-port = int(input("Enter the port to connect: "))
+host = "localhost"
+port = 8000
 
 # Create the socket object
 s = socket.socket()
 
-# Bind the socket to the host and port
+# Bind the socket to a specific address and port
 s.bind((host, port))
 
 # Listen for incoming connections
 s.listen(1)
 
-# Accept the connection from the sender
-print("Waiting for sender to connect...")
+# Wait for a connection
+print("Waiting for a connection...")
 conn, addr = s.accept()
-print(f"Sender {addr[0]} connected.")
+print(f"Connected to {addr}")
 
-# Receive the file size from the sender
-filesize_bytes = conn.recv(BUFFER_SIZE)
+# Receive the hashed username from the client
+hashed_username = conn.recv(BUFFER_SIZE)
 
-# Decode the file size from bytes to string and convert it to integer
-filesize = int(filesize_bytes.decode())
+# print(f"Received hashed username: {hashed_username}")
 
-# Define the output file name
-output_filename = "received_file.txt"
+# Receive the hashed password from the client
+hashed_password = conn.recv(BUFFER_SIZE)
 
-# Open the output file in binary mode
-with open(output_filename, "wb") as output_file:
-    # Receive the data in chunks and write it to the output file
-    while True:
-        # Receive the encrypted data from the sender
-        encrypted_data = conn.recv(BUFFER_SIZE)
+# print(f"Received hashed password: {hashed_password}")
 
-        # If the data is empty, break the loop
-        if not encrypted_data:
-            break
+# Get the username and password from the user
+username = input("Enter your username: ")
+password = input("Enter your password: ").encode()
 
-        # Decrypt the data using the key
-        decrypted_data = f.decrypt(encrypted_data)
+# Hash the entered username and password
+hashed_entered_username = bcrypt.hashpw(username.encode(), hashed_username)
+hashed_entered_password = bcrypt.hashpw(password, hashed_password)
 
-        # Write the decrypted data to the output file
-        output_file.write(decrypted_data)
+# Check if the entered username and password match the received username and password
+if hashed_entered_username == hashed_username and hashed_entered_password == hashed_password:
+    print("Authentication successful.")
+    # Send an OK message to the client to indicate successful authentication
+    conn.send("OK".encode())
 
-# Close the connection and the socket
-conn.close()
-s.close()
+    # Receive the file size from the client
+    filesize_bytes = conn.recv(BUFFER_SIZE)
 
-# Print the success message and the location of the received file
-print(f"File received and saved as {output_filename}")
-print(f"Location: {os.getcwd()}/{output_filename}")
+    # Decode the file size to an integer
+    filesize = int(filesize_bytes.decode())
+
+    # Receive the file data in chunks and write it to a file
+    with open("received_file.txt", "wb") as file:
+        print("Receiving file...")
+        while filesize > 0:
+            # Receive the encrypted data from the client
+            encrypted_data = conn.recv(BUFFER_SIZE)
+
+            # Decrypt the data using the key
+            data = f.decrypt(encrypted_data)
+
+            # Write the data to the file
+            file.write(data)
+
+            # Subtract the number of bytes received from the file size
+            filesize -= len(data)
+
+    # Close the connection and socket
+    conn.close()
+    s.close()
+
+    print("File received successfully.")
+else:
+    print("Authentication failed.")
+    # Send a FAIL message to the client to indicate failed authentication
+    conn.send("FAIL".encode())
+
+    # Close the connection and socket
+    conn.close()
+    s.close()
