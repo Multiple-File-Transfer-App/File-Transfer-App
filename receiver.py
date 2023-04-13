@@ -9,7 +9,7 @@ key = b'_vIt8OKkWlDGid-hI9MG9MpkvJc8fWdhrCp4F3qkGv4='
 f = Fernet(key)
 
 # Define the buffer size
-BUFFER_SIZE = 4096
+BUFFER_SIZE = 65536
 
 # Define the host and port to receive the file
 host = "localhost"
@@ -90,8 +90,6 @@ if hashed_entered_username == hashed_username and hashed_entered_password == has
     print("File received successfully.")
 else:
     print("Authentication failed.")
-    # Send a FAIL message to the client to indicate failed authentication
-    conn.send("FAIL".encode())
 
     # Close the connection and socket
     conn.close()
