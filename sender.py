@@ -8,7 +8,7 @@ key = b'_vIt8OKkWlDGid-hI9MG9MpkvJc8fWdhrCp4F3qkGv4='
 f = Fernet(key)
 
 # Define the buffer size
-BUFFER_SIZE = 4096
+BUFFER_SIZE = 65536  # increased buffer size
 
 # Define the host and port to send the file
 host = "localhost"
@@ -28,9 +28,6 @@ password = input("Enter your password: ").encode()
 hashed_entered_username = bcrypt.hashpw(username.encode(), bcrypt.gensalt())
 hashed_entered_password = bcrypt.hashpw(password, bcrypt.gensalt())
 
-# print(f"Hashed username: {hashed_entered_username}")
-# print(f"Hashed password: {hashed_entered_password}")
-
 # Send the hashed username to the server
 s.send(hashed_entered_username)
 
@@ -46,6 +43,13 @@ if auth_result == "OK":
 
     # Get the file to send from the user
     file_path = input("Enter the path of the file to send: ")
+
+    # Check if the file exists
+    if not os.path.isfile(file_path):
+        print(f"File '{file_path}' does not exist.")
+        # Close the connection
+        s.close()
+        exit()
 
     # Get the size of the file
     filesize = os.path.getsize(file_path)
