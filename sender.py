@@ -7,9 +7,6 @@ import bcrypt
 key = b'_vIt8OKkWlDGid-hI9MG9MpkvJc8fWdhrCp4F3qkGv4='
 f = Fernet(key)
 
-# Define the buffer size
-BUFFER_SIZE = 65536  # increased buffer size
-
 # Define the host and port to send the file
 host = "localhost"
 port = 8000
@@ -35,7 +32,7 @@ s.send(hashed_entered_username)
 s.send(hashed_entered_password)
 
 # Receive the authentication result from the server
-auth_result = s.recv(BUFFER_SIZE).decode()
+auth_result = s.recv(1024).decode()
 
 # Check if the authentication was successful
 if auth_result == "OK":
@@ -57,12 +54,17 @@ if auth_result == "OK":
     # Send the file size to the server
     s.send(str(filesize).encode())
 
+    # Allocate buffer size based on file size
+    buffer_size = 1024 * 1024  # 1 MB buffer
+    if filesize < buffer_size:
+        buffer_size = filesize
+
     # Send the file data in chunks
     with open(file_path, "rb") as file:
         print("Sending file...")
         while True:
             # Read a chunk of data from the file
-            data = file.read(BUFFER_SIZE)
+            data = file.read(buffer_size)
 
             # Check if the end of file has been reached
             if not data:
@@ -73,6 +75,12 @@ if auth_result == "OK":
 
             # Send the encrypted data to the server
             s.send(encrypted_data)
+
+            # Update the buffer size if needed
+            if filesize > buffer_size:
+                filesize -= buffer_size
+                if filesize < buffer_size:
+                    buffer_size = filesize
 
     # Close the connection
     s.close()
