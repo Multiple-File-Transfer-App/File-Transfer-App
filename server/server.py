@@ -1,82 +1,74 @@
-import os
 import socket
 
-# Define the server's IP address and port
-HOST = '127.0.0.1'
-PORT = 8000
 
-# Create a TCP socket and bind it to the server address
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.bind((HOST, PORT))
+# creating a socket object
+s = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 
-# Listen for incoming connections
-s.listen()
-print(f"Server listening on port {PORT}")
+# initialize host and port
+HOST = 'localhost'
+PORT = 5000
 
-# Dictionary to store the registered users and passwords
-users = {'john': 'pass123', 'jane': 'pass456'}
+# binding the socket to a public host
+s.bind((HOST,PORT))
 
-# Function to handle client connections
-def handle_connection(conn, addr):
-    print(f"New client connected: {addr}")
-    
-    # Login process
-    while True:
-        # Receive the username and password from the client
-        username = conn.recv(1024).decode()
-        password = conn.recv(1024).decode()
-        
-        # Check if the username and password are valid
-        if username in users and users[username] == password:
-            print(f"User {username} authenticated successfully!")
-            conn.sendall(b"OK")
-            break
-        else:
-            print(f"User authentication failed for {username}!")
-            conn.sendall(b"FAIL")
-            continue
-    
-    # Send the list of files to the client
-    file_list = "\n".join(os.listdir())
-    conn.sendall(file_list.encode())
-    
-    # Download process
-    while True:
-        # Receive the filename from the client
-        filename = conn.recv(1024).decode()
-        
-        # Check if the user wants to quit
-        if filename == "QUIT":
-            break
-        
-        # Check if the file exists and is not a directory
-        if os.path.isfile(filename):
-            # Send the file size to the client
-            file_size = os.path.getsize(filename)
-            conn.sendall(str(file_size).encode())
-            
-            # Send the file data to the client in chunks
-            with open(filename, 'rb') as f:
-                chunk_size = 1024 * 1024  # 1 MB
-                num_chunks = file_size // chunk_size
-                if file_size % chunk_size != 0:
-                    num_chunks += 1
-                print(f"Number of chunks: {num_chunks}")
-                
-                for i in range(num_chunks):
-                    data = f.read(chunk_size)
-                    while data:
-                        conn.sendall(data)
-                        data = f.read(chunk_size)
-                    print(f"Sent chunk {i+1} of {num_chunks}")
-        else:
-            conn.sendall(b"FAIL")
-    
-    # Close the connection
-    conn.close()
-    print(f"Connection closed for client {addr}")
+s.listen(1)
 
-# Accept incoming connections and start a new thread for each connection
-while True:
+
+# dict to store credentials
+creds = dict()
+
+with open('server/login_cred.txt','r') as f :
+    for line in f :
+        temp = line.split(' ')
+        creds[temp[0]] = temp[1].rstrip()
+
+
+print('Server Started')
+
+while True :
+
+    # wait for a connection
     conn, addr = s.accept()
-    handle_connection(conn, addr)
+
+    # Welcome message to client asking for log
+    conn.sendall(b'Welcome to the UGA Torrent server! Please choose an option: log in (1) or register (2).\n')
+
+    choice = conn.recv(1024).decode().strip()
+
+    # handling the choice
+    if choice == '1' :
+        # login
+        username = conn.recv(1024).decode().strip()
+        password = conn.recv(1024).decode().strip()
+
+        if username in creds and creds[username] == password :
+            conn.sendall(b'Login Successful\n')
+        
+        else:
+            conn.sendall(b'Invalid Username or Password\n')
+
+    elif choice == '2' :
+        #register
+        username = conn.recv(1024).decode().strip()
+        password = conn.recv(1024).decode().strip()
+        
+        creds[username] = password
+
+        with open('login_cred.txt','w') as f :
+            for k,v in creds.items() :
+                f.write(k + ' ' + v + '\n')
+
+        f.close()
+
+        conn.sendall(b'Account created rerun to login!\n')
+
+    elif choice.lower() == 'quit' :
+        break
+
+    else : #invalid choice 
+        conn.sendall(b'Invalid choice.\n')
+
+
+
+conn.close()
+

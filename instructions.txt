@@ -1,5 +1,0 @@
-Run the receiver.py script on the machine that will receive the file.
-Enter the IP address or hostname and the port number when prompted.
-Run the sender.py script on the machine that will send the file.
-Enter the IP address or hostname and the port number to connect to, and the path to the file to send when prompted.
-( If you want to test it on your own comouter then IP: 127.0.0.1 or localhost and port is anuything like 8000 or 5000)
